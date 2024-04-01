@@ -32,14 +32,18 @@ RTSP是基于**RTP**和**RTCP**进行多媒体数据传输。
 ## rtsp的消息结构
 
 请求消息格式：
+
 ![alt text](/assets/RTCP请求消息格式.png)
+
 字段|说明
 ---|---
 方法|OPTIONS, DESCRIBE, SETUP, TEARDOWN, PLAY
 URI|接受方地址，如rtsp://192.168.1.201:554
 
 回复消息格式：
+
 ![alt text](/assets/RTCP回复消息格式.png)
+
 字段|说明
 ---|---
 状态码|同http的返回状态，如200，表示OK
@@ -82,6 +86,7 @@ attribute(可选)|表示一个会话级别或媒体级别下的0个或多个属�
 通常连接地址是D类IP多播地址，如果会话不是多播的，则连接地址包含由`attribute`（**附加属性**）字段确定的**预期数据源**、**数据中继**、**数据接收器**的完全限定域名或单播IP地址。
 
 媒体级描述主要包含以下字段(带*号标记为可选)：
+
 ![alt text](/assets/sdp媒体级描述.png)
 
 字段|描述|格式
@@ -137,6 +142,7 @@ a=recvonly
 ### OPTION
 
 请求消息格式：
+
 ![alt text](/assets/OPTION请求.png)
 
 * **OPTIONS**：标识请求命令的类型;
@@ -146,6 +152,7 @@ a=recvonly
 * **User-Agent**：用户代理;
 
 回复消息格式：
+
 ![alt text](/assets/OPTION响应.png)
 
 * **Public**：表示了服务端支持的方法，有OPTIONS，DESCRIBE，PLAY，PAUSE，SETUP，TEARDOWN，SET_PARAMERTER，GET_PARAMETER
@@ -174,7 +181,9 @@ Date:  Fri, Apr 10 2020 19:07:19 GMT\r\n
 客户端会继续向服务器发送DESCRIBE消息，来获取会话描述信息（sdp），得知有哪些视频流以及视频流的分辨率、帧率、编解码信息等。
 
 请求结构：
+
 ![alt text](/assets/DESCRIBE请求.png)
+
 消息头部：DESCRIBE为请求类型；URI为请求的服务器地址；RTSP_VER为RTSP版本
 
 * **Accept**：指明接收数据的格式，如application/sdp表示接收sdp信息；
@@ -185,12 +194,15 @@ Date:  Fri, Apr 10 2020 19:07:19 GMT\r\n
 对于DESCRIBE消息，服务端的回复有两种可能：若需要认证，则返回401，并在客户端认证，客户端再次发送包含认证信息的DESCRIBE指令，服务端收到带认证信息的DESCRIBE请求，返回sdp信息给客户端；如果不需要认证，则直接返回sdp。
 
 需要认证（状态码为401）：
+
 ![alt text](/assets/DESCRIBE回复(认证).png)
 
 客户端认证（带Authorization字段）：
+
 ![alt text](/assets/DESCRIBE请求(认证).png)
 
 认证成功（返回sdp信息）：
+
 ![alt text](/assets/DESCRIBE(认证成功).png)
 
 * **Content-type**：回复内容类型，值application/sdp；
@@ -268,6 +280,7 @@ a=appversion:1.0
 SETUP请求的作用是指明媒体流该以什么方式传输；每个流PLAY之前必须执行SETUP操作；发送SETUP请求时，客户端会指定两个端口，**偶数端口用来接收RTP（视频）数据，相邻的奇数端口用于接收RTCP（控制）数据**。
 
 请求结构：
+
 ![alt text](/assets/SETUP请求.png)
 
 * SETUP：消息类型；
@@ -282,6 +295,7 @@ SETUP请求的作用是指明媒体流该以什么方式传输；每个流PLAY�
 请求之后，若异常情况，RTSP服务器回复200 OK消息，同时在Transport字段中增加sever_port，指明对等的服务端RTP和RTCP传输的端口，增加ssrc字段，增加mode字段，同时返回一个session id，用于标识本次会话连接，之后客户端发起PLAY请求的时候需要使用该字段。
 
 回复结构：
+
 ![alt text](/assets/SETUP响应.png)
 
 SETUP实例
@@ -311,6 +325,7 @@ Date: Fri, Apr 10 2020 19:07:19 GMT
 PLAY消息是客户端发送的播放请求，发送播放请求的时候可以指定播放区间，发起播放请求后，如果连接正常，则服务端开始播放视频，即开始向客户端按照之前在**TRASPORT**中约定好的方式发送音视频数据包。
 
 请求结构：
+
 ![alt text](/assets/PLAY请求.png)
 
 * **RTSP URI**：请求的RTSP 地址；
@@ -322,6 +337,7 @@ PLAY消息是客户端发送的播放请求，发送播放请求的时候可以�
 * **Range**：PLAY消息特有的，表示**请求播放的时间段**，使用ntp时间来表示。
 
 响应结构：
+
 ![alt text](/assets/PLAY响应.png)
 
 * **Session**：会话ID，SETUP返回时确定的ID；
@@ -360,6 +376,7 @@ Date: Fri, Apr 10 2020 19:07:20 GMT\r\n\r\n
 暂停请求会使得流传输暂时中断（相当于暂停），如果请求的URL指向一个流地址，则仅针对该流的回放和录制会被中断。
 
 请求结构：
+
 ![alt text](/assets/PAUSE请求.png)
 
 * **RTSP URI**：请求的流地址；
@@ -368,6 +385,7 @@ Date: Fri, Apr 10 2020 19:07:20 GMT\r\n\r\n
 * **Session**：会话ID，SETUP请求时服务端返回的ID。
 
 响应结构：
+
 ![alt text](/assets/PAUSE响应.png)
 
 PAUSE示例：
@@ -395,6 +413,7 @@ Session：12345678\r\n\r\n
 TEARDOWN用于结束流传输，同时释放与之相关的资源，TEARDWON之后，整个RTSP连接也随之结束。
 
 请求结构：
+
 ![alt text](/assets/TEARDOWN请求.png)
 
 * **URI**：请求的流地址；
@@ -402,6 +421,7 @@ TEARDOWN用于结束流传输，同时释放与之相关的资源，TEARDWON之�
 * **Session**：SETUP消息后server返回的会话id；
 
 回复结构：
+
 ![alt text](/assets/TEARDOWN响应.png)
 
 * **Session**：SETUP消息后回复客户端的会话id；
@@ -438,6 +458,7 @@ GetParameret用作向服务器获取参数，一般用于获取时间范围。**
 ![alt text](/assets/GET_PARAMETER请求.png)
 
 响应格式：
+
 ![alt text](/assets/GET_PARAMETER响应.png)
 
 GET Parameter示例：
@@ -475,9 +496,11 @@ SET_PARAMETER方法用于给URI指定的流地址设置参数。
 服务器允许某个参数被重复设置成相同的值，但不允许改变参数的值。
 
 请求结构：
+
 ![alt text](/assets/SET_PARAMETER请求.png)
 
 响应结构：
+
 ![alt text](/assets/SET_PARAMETER响应.png)
 
 * **状态码、状态描述**：给出了对于设置某个参数的请求的回复状态，如状态码451，表示无效参数（Invalid Parameter）；
@@ -492,6 +515,7 @@ RTP是一种应用层协议，传输层协议可以是TCP或者UDP。
 RTP数据包由两部分组成，一部分是RTP Heaeder，一部分是RTP body，RTP Header占用最少12个字节，最多72个字节；另一部分是RTP Payload，用来**封装视频数据**，如封装h264编码的视频数据。
 
 **头结构**：
+
 ![alt text](/assets/RTP头格式.png)
 
 * **V**：版本号，2个bit；
@@ -514,6 +538,7 @@ RTP数据包由两部分组成，一部分是RTP Heaeder，一部分是RTP body�
 RTSP用于建立连接及发送请求等，RTP用于实际的媒体数据传输，RTCP(RTP Control Protocol)是针对RTP的控制协议，RTCP提供了数据分发质量反馈信息。
 
 RTCP包格式：
+
 ![alt text](/assets/RTCP包格式.png){:height="85%" width="85%"}
 
 * **V(2bit)**：Version，表示RTCP版本号，当前规范定义的版本号为2，==RTP数据包中的版本号与RTCP数据包的中的版本号是一致的==;
@@ -558,6 +583,7 @@ RTCP包格式：
 ##### SD(source description)
 
 ![alt text](/assets/SD格式.png)
+
 Source Description是按照KLV的格式组织的，key表示具体的类型，length为长度，value为具体的值，key占用1个字节，length占用1个字节。
 
 * **CNAME(值为1)**:  规范终端标识，像SSRC标识，==CNAME标识在RTP连接的所有参加者中应是唯一的==；

@@ -71,7 +71,7 @@ sdp会话描述包含一个**会话级描述**（session_level_description）和
 字段|描述|格式
 ---|---|---
 version(必选)|表示sdp的版本号|v=\<version>
-origin(必选)|对会话的发起者进行了描述|o=\<username> \<sessionid> \<version> \<network type> \<address type> \<address>
+owner(必选)|对会话的发起者进行了描述，建议将sessionid设置为NTP时间戳。|o=\<username> \<sessionid> \<version> \<network type> \<address type> \<address>
 Session Name(必选)|会话名称(唯一)|s=\<name>
 Connection Data(可选)|表示媒体连接信息|c=\<networktype> \<address type> \<connection address>
 Bandwidth(可选)|描述了建议的带宽，CT表示总带宽，AS表示单个媒体带宽的最大值|b=\<modifier>:\<bandwidth-value>
@@ -523,7 +523,7 @@ RTP数据包由两部分组成，一部分是RTP Heaeder，一部分是RTP body�
 * **X**：扩展位，1个bit。为1表示包头后面还有一个扩展头部；
 * **CC**：CSRC个数，4bit。表示后面CSRC的个数0~15个；
 * **M**：标记位，1个bit。值为0，表示该数据包非一帧数据的最后一帧，值为1时，表示该数据包是一帧数据的最后一个数据包；
-* **PT**：表示 **==荷载类型==**，7个bit，GB28181中H.264的PT值为98；
+* **PT**：表示 **==荷载类型==**，7个bit，GB28181中H.264的PT值为98(有一些其他标准定义为96)；
 * **SN**：序列号，16个bit；
 * **时间戳**：32个bit，记录数据荷载部分采样时刻；
 * **同步信源（SSRC）标识符**：32个bit。标记RTP的来源，一个RTP会话中不能有两个SSRC值。

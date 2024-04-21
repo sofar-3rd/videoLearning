@@ -1,5 +1,9 @@
 # rtsp协议解析
 
+## 参考
+
+[流媒体开发:RTP over TCP](https://download.csdn.net/blog/column/6993725/76822810)
+
 ## rtsp简介
 
 rtsp（Real Time Streaming Protocol，RFC2326），实时流传输协议，是TCP/IP协议体系中的一个**应用层协议**。规定了一对多应用程序如何有效地通过IP网络传送多媒体数据。
@@ -294,6 +298,8 @@ SETUP请求的作用是指明媒体流该以什么方式传输；每个流PLAY�
 
 请求之后，若异常情况，RTSP服务器回复200 OK消息，同时在Transport字段中增加sever_port，指明对等的服务端RTP和RTCP传输的端口，增加ssrc字段，增加mode字段，同时返回一个session id，用于标识本次会话连接，之后客户端发起PLAY请求的时候需要使用该字段。
 
+**Session头字段标识了一个RTSP会话。Session ID 是由服务器在SETUP的回应中选择的，客户端一当得到Session ID后，在以后的对Session 的操作请求消息中都要包含Session ID。**
+
 回复结构：
 
 ![alt text](/assets/SETUP响应.png)
@@ -514,7 +520,7 @@ RTP是一种应用层协议，传输层协议可以是TCP或者UDP。
 
 RTP数据包由两部分组成，一部分是RTP Heaeder，一部分是RTP body，RTP Header占用最少12个字节，最多72个字节；另一部分是RTP Payload，用来**封装视频数据**，如封装h264编码的视频数据。
 
-**头结构**：
+**RTP头格式**：
 
 ![alt text](/assets/RTP头格式.png)
 
@@ -527,7 +533,17 @@ RTP数据包由两部分组成，一部分是RTP Heaeder，一部分是RTP body�
 * **SN**：序列号，16个bit；
 * **时间戳**：32个bit，记录数据荷载部分采样时刻；
 * **同步信源（SSRC）标识符**：32个bit。标记RTP的来源，一个RTP会话中不能有两个SSRC值。
-* **特约信源（CSRC）标识符**：最多15个，每个都是32个bit。
+* **特约信源（CSRC）标识符**：每个CSRC标识符占32位，可以有0～15个。每个CSRC标识了包含在该RTP报文有效载荷中的所有特约信源。
+
+#### 同步信源和特约信源
+
+同步信源是指产生媒体流的信源，例如麦克风、摄像机、RTP混合器等；它通过RTP报头中的一个32位数字SSRC标识符来标识，而不依赖于网络地址，**接收者将根据SSRC标识符来区分不同的信源，进行RTP报文的分组。**
+
+特约信源是指当混合器接收到一个或多个同步信源的RTP报文后，经过混合处理产生一个新的组合RTP报文，并把混合器作为组合RTP报文的 SSRC，而**将原来所有的SSRC都作为CSRC传送给接收者，使接收者知道组成组合报文的各个SSRC**。
+
+若一个RTP包流的源，对由RTP混频器生成的组合流起了作用，则它就是一个作用源。**对特定包的生成起作用的源，其SSRC标识符组成的列表，被混频器插入到包的RTP报头中**。这个列表叫做CSRC表。
+
+![alt text](/assets/同步信源和特约信源.png)
 
 ## RTCP
 
@@ -566,7 +582,7 @@ RTCP包格式：
 * RTP时标：RTP时间戳
 * **发送者包计数**：从开始传输到当前SR包生成的时间段内，==发送端发送的RTP数据包的总个数==。若发送者更改其SSRC，则该计数重置；
 
-* **发送者数据8位组计数**：从开始传输到当前SR包生成的时间段内，==发送端发送的总的数据的大小的八位组计数==，不包含头信息以及填充信息。若发送者更改可SSRC，需要重置该值，该字段可用来估计平均码率。
+* **发送者数据8位组计数**：从开始传输到当前SR包生成的时间段内，==发送端发送的总的数据的大小的八位组计数==，不包含头信息以及填充信息。若发送者更改SSRC，需要重置该值，该字段可用来估计平均码率。
 
 ##### RR(Receiver report)
 
@@ -603,3 +619,41 @@ Source Description是按照KLV的格式组织的，key表示具体的类型，le
 * **PRIV(值为8)**: 用于描述针对源的扩展项；
 
 **RTCP中通过Sender Report和Receive Report在RTP数据传输中提供当前连接中RTP包发送的情况，RTP包接收的情况，RTP包丢失的情况**。通过这些信息反馈，可以实现对网络传输做一些调整和控制，这就是RTCP的主要功能。
+
+## RTSP over TCP
+
+当使用TCP协议承载RTSP/RTP时，**所有的命令和媒体数据都将通过RTSP端口（554）发送**。同时，数据将经过二元交织格式化之后才能发送。
+
+当使用TCP连接，RTSP客户端需要在SETUP阶段请求TCP连接。SETUP命令中的transport格式如下：`Transport: RTP/AVP/TCP;interleaved=0-1`
+
+上述Transport将告诉服务端使用TCP协议发送媒体数据，**并且使用信道 0 和 1 对流数据以及控制信息进行交织**，即==使用偶数信道作为数据传输信道==，==使用奇数信道作为控制信道==（数据信道 + 1）。
+
+连接报文：
+
+![alt text](/assets/RTSPtcpsetup报文.png)
+
+SETUP之后，RTP数据将通过用来发送RTSP命令的TCP Socket进行发送。RTP数据将以如下格式进行封装：
+
+`| magic number | channel number | data length | data |`
+
+* magic number：RTP数据标识符，"$" 一个字节;
+* channel number：信道数字 - 1个字节，用来表示信道;
+* data length：数据长度 - 2个字节，用来表示插入数据长度
+* data：负载数据，比如说RTP包，**总长度与上面的数据长度相同**。
+
+RTP，RTCP数据和RTSP数据共享TCP数据通道，所以必须有一个标识来区别三种数据。
+
+1. **RTP和RTCP数据会有 `| magic number | channel number | data length |` 4字节前缀。
+2. **RTSP数据没有前缀数据**。
+3. RTP数据和RTCP数据的区别在于**第二个字节的通道编号**。
+
+==RTP OVER TCP 方式数据头结构定义==：
+
+```(c++)
+typedef struct rtsp_interleaved
+    { 
+        unsigned int magic : 8;// $
+        unsigned int channel : 8; //0-1
+        unsigned int rtp_len : 16;
+    }RILF;
+```
